@@ -8,20 +8,58 @@ const server = http.createServer(async (req, res) => {
             body += chunk.toString();
         });
         req.on("end", async () => {
-            let parsedBody = JSON.parse(body);
-            let user = await fs.readFile("./users.json", "utf8");
-            let parsedUsers = JSON.parse(user);
-            if (parsedUsers.find((user) => user.name === parsedBody.name)) {
+            let { name, password } = JSON.parse(body);
+            let users = await fs.readFile("./users.json", "utf8");
+            let parsedUsers = JSON.parse(users);
+            if (!name || !password) {
+                res.writeHead(404, { "content-type": "application/json" });
+                return res.end(
+                    JSON.stringify({ error: "Name or password does not exist" })
+                );
+            }
+            const symbols = "!$_-";
+            let hasSymbol = password
+                .split("")
+                .some((char) => symbols.includes(char));
+            let hasUpper = password
+                .split("")
+                .some((char) => char >= "A" && char <= "Z");
+            let hasLower = password
+                .split("")
+                .some((char) => char >= "a" && char <= "z");
+            let hasNumber = password
+                .split("")
+                .some((char) => char >= "0" && char <= "9");
+
+            if (password.length < 4 || password.length > 10) {
+                return res.end(
+                    "Password should has min 4 and max 10 character!"
+                );
+            }
+            if (!hasUpper) {
+                return res.end("Password must be at least 1 Uppercase!");
+            }
+            if (!hasLower) {
+                return res.end("Password must be at least 1 Lowercase!");
+            }
+            if (!hasNumber) {
+                return res.end("Password must be at least 1 number!");
+            }
+            if (!hasSymbol) {
+                return res.end("Password must be at least 1 symbol!");
+            }
+
+            if (parsedUsers.find((user) => user.name === name)) {
                 res.writeHead(403, { "content-type": "application/json" });
                 return res.end(
                     JSON.stringify({ error: "User already exists" })
                 );
             }
             parsedUsers.push(parsedBody);
-            fs.writeFile("./users.json", JSON.stringify(parsedUsers));
+            await fs.writeFile("./users.json", JSON.stringify(parsedUsers));
             res.writeHead(200, { "content-type": "application/json" });
             res.end(
-                JSON.stringify({ massage: "User successfully registered" })
+                JSON.stringify({ message: "User successfully registered" })
             );
         });
     }
